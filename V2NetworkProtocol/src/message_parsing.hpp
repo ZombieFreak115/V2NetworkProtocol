@@ -75,9 +75,18 @@ enum class parsing_state :uint8_t {
 	parsing_segment_header = 1,
 	parsing_segment_data = 2,
 };
+enum class parsing_error : uint8_t
+{
+	success = 0,
+	not_enough_bytes_for_packet_header = 1,
+	not_enough_bytes_for_segment_header = 2,
+	not_enough_bytes_for_segment_data = 3,
+};
+
+network_message parse_network_message_stateless(std::span<unsigned char> input_data, parsing_error& err_out, uint64_t& buffer_bytes_read);
 
 template<typename F>
-void parse_network_message(std::span<unsigned char> input_data, F&& on_message_parsed) {
+void parse_network_message_statefull(std::span<unsigned char> input_data, F&& on_message_parsed) {
 	uint64_t buffer_size = input_data.size();
 	static parsing_state parse_state = parsing_state::parsing_packet_header;
 	static uint64_t segment_bytes_read = 0; // main header also counts as a segment
