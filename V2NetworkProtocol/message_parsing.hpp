@@ -1,8 +1,13 @@
 #pragma once
 #include <cstdint>
+#include <cstring>
 #include <vector>
 #include <span>
+#ifdef _WIN32
 #include <winsock.h>
+#else
+#include <arpa/inet.h>
+#endif
 #include <algorithm>
 #include <string>
 
