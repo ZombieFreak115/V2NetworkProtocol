@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <array>
-#include "message_parsing.hpp"
+#include "../V2NetworkProtocol/src/message_parsing.hpp"
 
 int main()
 {

@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include <epan/packet.h>
+#include "message_parsing.hpp"
 
 constexpr uint16_t v2_udp_ports[] = {1630, 1631, 1632, 1633, 1634, 1635, 1636, 1637, 1638, 1639, 1640, 1641};
 constexpr uint32_t udp_port_arr_size = sizeof(v2_udp_ports)/sizeof(v2_udp_ports[0]);
@@ -28,18 +29,40 @@ extern "C" {
 
     WS_DLL_PUBLIC void plugin_register(void);
 
+    static int hf_foo_pdu_type;
+    static int ett_foo;
+
 
     static int dissect_V2RUDP(tvbuff_t *packet_buffer, packet_info *packet_info, proto_tree *tree _U_, void *data _U_)
     {
         col_set_str(packet_info->cinfo, COL_PROTOCOL, protocol_short_name);
         /* Clear the info column */
         col_clear(packet_info->cinfo, COL_INFO);
+        const guint length = tvb_captured_length(packet_buffer);
+        const guint8* packet_data = tvb_get_ptr(packet_buffer,0, length);
+        network_message msg;
+
+        proto_item *ti = proto_tree_add_item(tree, protocol_handle, packet_buffer, 0, -1, ENC_BIG_ENDIAN);
 
         return tvb_captured_length(packet_buffer);
     }
 
     void proto_register_V2RUDP(void)
     {
+        static hf_register_info hf[] = {
+            { &hf_foo_pdu_type,
+                { "FOO PDU Type", "foo.type",
+                FT_UINT8, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+            }
+        };
+        /* Setup protocol subtree array */
+        static int *ett[] = {
+            &ett_foo
+        };
+
+
         protocol_handle = proto_register_protocol (
             protocol_name, /* protocol name        */
             protocol_short_name,          /* protocol short name  */
@@ -52,6 +75,9 @@ extern "C" {
             dissect_V2RUDP,    /* dissector function       */
             protocol_handle       /* protocol being dissected */
             );
+
+        proto_register_field_array(protocol_handle, hf, array_length(hf));
+        proto_register_subtree_array(ett, array_length(ett));
     }
 
     void proto_reg_handoff_V2RUDP(void)

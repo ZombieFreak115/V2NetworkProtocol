@@ -12,6 +12,7 @@
 #include <string>
 
 #pragma comment(lib, "Ws2_32.lib")
+#include <iostream>
 
 #undef min
 

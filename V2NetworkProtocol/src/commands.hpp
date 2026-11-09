@@ -1,6 +1,6 @@
 #pragma once
 
-#include "message_parsing.hpp"
+#include "../message_parsing.hpp"
 
 // Exists in the variable_data payload. May be absent in some commands 
 struct command_header {

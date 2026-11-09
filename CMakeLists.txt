@@ -10,7 +10,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 project ("V2NetworkProtocol")
 project ("V2WiresharkPlugin")
+project ("TestsProject")
 
 # Include sub-projects.
 add_subdirectory ("V2NetworkProtocol")
 add_subdirectory ("V2WiresharkPlugin")
+add_subdirectory ("Tests")

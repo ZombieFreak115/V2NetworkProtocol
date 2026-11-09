@@ -3,6 +3,9 @@
 #
 cmake_minimum_required(VERSION 3.20)
 
+set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_C_STANDARD 23)
+
 find_package(Wireshark CONFIG REQUIRED)
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -34,6 +37,7 @@ add_library(V2WiresharkPlugin MODULE "src/plugin.cpp")
 
 set_target_properties(V2WiresharkPlugin PROPERTIES PREFIX "" DEFINE_SYMBOL "")
 target_link_libraries(V2WiresharkPlugin epan)
+target_link_libraries(V2WiresharkPlugin V2NetworkProtocol)
 
 # This is the normal installation target to CMAKE_INSTALL_PREFIX. It is relocatable
 # using DESTDIR or cmake --install. By default CMAKE_INSTALL_PREFIX should be configured
