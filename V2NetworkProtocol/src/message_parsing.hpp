@@ -83,7 +83,7 @@ enum class parsing_error : uint8_t
 	not_enough_bytes_for_segment_data = 3,
 };
 
-network_message parse_network_message_stateless(std::span<unsigned char> input_data, parsing_error& err_out, uint64_t& buffer_bytes_read);
+network_message parse_network_message_stateless(std::span<const unsigned char> input_data, parsing_error& err_out, uint64_t& buffer_bytes_read);
 
 template<typename F>
 void parse_network_message_statefull(std::span<unsigned char> input_data, F&& on_message_parsed) {

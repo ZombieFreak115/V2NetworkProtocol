@@ -1,7 +1,7 @@
 #include "message_parsing.hpp"
 
 
-network_message parse_network_message_stateless(std::span<unsigned char> input_data, parsing_error& err_out, uint64_t& buffer_bytes_read) {
+network_message parse_network_message_stateless(std::span<const unsigned char> input_data, parsing_error& err_out, uint64_t& buffer_bytes_read) {
 	uint64_t buffer_size = input_data.size();
 	parsing_state parse_state = parsing_state::parsing_packet_header;
 	uint16_t segments_to_parse = 0;
