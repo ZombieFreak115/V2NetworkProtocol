@@ -16,17 +16,38 @@
 
 #undef min
 
+enum class protocol_command_type : uint8_t {
+	none=0,
+	acknowledge=1,
+	connect = 2,
+	verify_connect=3,
+	disconnect=4,
+	ping=5,
+	send_reliable=6,
+	send_unreliable=7,
+	send_fragment=8,
+	bandwidth_limit=9,
+	throttle_configure=10,
+	send_unsequenced=11
+};
+
 
 struct variable_data_segment_header {
-	uint32_t unk_1;
+	protocol_command_type command_type;
+	uint8_t channel_id;
+	uint8_t flags;
+	uint8_t reserved;
 	uint32_t data_size;
+	uint32_t reliable_seq_num;
 
 	void to_host_order() {
-		unk_1 = ntohl(unk_1);
 		data_size = ntohl(data_size);
+		reliable_seq_num = ntohl(reliable_seq_num);
 	}
 
+
 };
+static_assert(sizeof(variable_data_segment_header) == 12);
 
 struct variable_data_segment {
 	variable_data_segment_header segment_header;
@@ -34,20 +55,27 @@ struct variable_data_segment {
 
 };
 
+enum class packet_type : uint16_t
+{
+	data = 0x0,
+	connection_request = 0xffff,
+};
+
+
 
 
 struct message_header {
 	// header
-	uint16_t unk_1;
+	packet_type type;
 	uint16_t data_segment_count;
 	uint32_t sequence_num;
-	uint32_t unk_3;
+	uint32_t session_handle;
 	
 	void to_host_order() {
-		unk_1 = ntohs(unk_1);
+		//type = ntohs(type); // don't need to convert the type var
 		data_segment_count = ntohs(data_segment_count);
 		sequence_num = ntohl(sequence_num);
-		unk_3 = ntohl(unk_3);
+		session_handle = ntohl(session_handle);
 	}
 
 };
@@ -58,14 +86,7 @@ struct network_message {
 	std::vector<variable_data_segment> data_segments;
 
 	void print() const {
-		std::cout << std::hex << "header( " << "unk_1: " << header.unk_1 << ", data_segment_count: " << header.data_segment_count << ", sequence_num: " << header.sequence_num << ", unk_3: " << header.unk_3;
-		for (const auto& segment : data_segments) {
-			std::cout << std::hex << " segment( " << "unk_1: " << segment.segment_header.unk_1 << ", data_size: " << segment.segment_header.data_size << ", sequence_num: " << "raw_data: ";
-			for (unsigned char dat : segment.variable_data) {
-				std::cout << std::hex << (uint32_t)dat << " ";
-			}
-		}
-		std::cout << "\n";
+
 	}
 
 };
