@@ -10,86 +10,14 @@
 #endif
 #include <algorithm>
 #include <string>
+#include "message_types.hpp"
+#include "concepts.hpp"
 
 #pragma comment(lib, "Ws2_32.lib")
 #include <iostream>
 
 #undef min
 
-enum class protocol_command_type : uint8_t {
-	none=0,
-	acknowledge=1,
-	connect = 2,
-	verify_connect=3,
-	disconnect=4,
-	ping=5,
-	send_reliable=6,
-	send_unreliable=7,
-	send_fragment=8,
-	bandwidth_limit=9,
-	throttle_configure=10,
-	send_unsequenced=11
-};
-
-
-struct variable_data_segment_header {
-	protocol_command_type command_type;
-	uint8_t channel_id;
-	uint8_t flags;
-	uint8_t reserved;
-	uint32_t data_size;
-	uint32_t reliable_seq_num;
-
-	void to_host_order() {
-		data_size = ntohl(data_size);
-		reliable_seq_num = ntohl(reliable_seq_num);
-	}
-
-
-};
-static_assert(sizeof(variable_data_segment_header) == 12);
-
-struct variable_data_segment {
-	variable_data_segment_header segment_header;
-	std::vector<unsigned char> variable_data;
-
-};
-
-enum class packet_type : uint16_t
-{
-	data = 0x0,
-	connection_request = 0xffff,
-};
-
-
-
-
-struct message_header {
-	// header
-	packet_type type;
-	uint16_t data_segment_count;
-	uint32_t sequence_num;
-	uint32_t session_handle;
-	
-	void to_host_order() {
-		//type = ntohs(type); // don't need to convert the type var
-		data_segment_count = ntohs(data_segment_count);
-		sequence_num = ntohl(sequence_num);
-		session_handle = ntohl(session_handle);
-	}
-
-};
-static_assert(sizeof(message_header) == 12);
-
-struct network_message {
-	message_header header;
-	std::vector<variable_data_segment> data_segments;
-
-	void print() const {
-
-	}
-
-};
 
 enum class parsing_state :uint8_t {
 	parsing_packet_header = 0,
@@ -103,6 +31,9 @@ enum class parsing_error : uint8_t
 	not_enough_bytes_for_segment_header = 2,
 	not_enough_bytes_for_segment_data = 3,
 };
+
+template<concepts::network_struct struct_type>
+struct_type parse_network_struct(std::span<const unsigned char> input_data, uint64_t& buffer_bytes_read);
 
 network_message parse_network_message_stateless(std::span<const unsigned char> input_data, parsing_error& err_out, uint64_t& buffer_bytes_read);
 
@@ -137,7 +68,7 @@ void parse_network_message_statefull(std::span<unsigned char> input_data, F&& on
 				}
 				else {
 					on_message_parsed(out_buffer);
-					out_buffer = {};
+					out_buffer = network_message{};
 				}
 			}
 		}
@@ -145,16 +76,16 @@ void parse_network_message_statefull(std::span<unsigned char> input_data, F&& on
 			auto& current_data_segment = out_buffer.data_segments[current_segment_index];
 			if (parse_state == parsing_state::parsing_segment_header) {
 				unsigned char* binary_segment_header = reinterpret_cast<unsigned char*>(&current_data_segment.segment_header);
-				uint64_t bytes_to_read = sizeof(variable_data_segment_header) - segment_bytes_read;
+				uint64_t bytes_to_read = sizeof(data_segment_header) - segment_bytes_read;
 				bytes_to_read = std::min(bytes_to_read, buffer_size - buffer_bytes_read);
 				std::memcpy(binary_segment_header + segment_bytes_read, input_data.data() + buffer_bytes_read, bytes_to_read);
 				segment_bytes_read += bytes_to_read;
 				buffer_bytes_read += bytes_to_read;
-				if (segment_bytes_read == sizeof(variable_data_segment_header)) {
+				if (segment_bytes_read == sizeof(data_segment_header)) {
 					current_data_segment.segment_header.to_host_order();
 					segment_bytes_read = 0; // reset as segment header is done
 					parse_state = parsing_state::parsing_segment_data;
-					current_segment_size = current_data_segment.segment_header.data_size - sizeof(variable_data_segment_header); // Size includes the header itself, subtract that
+					current_segment_size = current_data_segment.segment_header.data_size - sizeof(data_segment_header); // Size includes the header itself, subtract that
 					current_data_segment.variable_data.resize(current_segment_size);
 
 				}
@@ -173,7 +104,7 @@ void parse_network_message_statefull(std::span<unsigned char> input_data, F&& on
 					if (current_segment_index == segments_to_parse) {
 						// We are done with this message, reset all message-related state and run the provided functor
 						on_message_parsed(out_buffer);
-						out_buffer = {}; // Destroy it
+						out_buffer = network_message{}; // Destroy it
 						parse_state = parsing_state::parsing_packet_header;
 						segments_to_parse = 0;
 						current_segment_index = 0;

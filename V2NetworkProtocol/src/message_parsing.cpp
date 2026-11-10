@@ -1,4 +1,17 @@
 #include "message_parsing.hpp"
+#include "concepts.hpp"
+
+
+template<concepts::network_struct struct_type>
+struct_type parse_network_struct(std::span<const unsigned char> input_data, uint64_t& buffer_bytes_read)
+{
+	struct_type out_buffer{};
+	uint64_t to_read = std::min(input_data.size(), sizeof(struct_type));
+	std::memcpy(out_buffer, input_data.data(), to_read);
+	out_buffer.to_host_order();
+	buffer_bytes_read += to_read;
+	return out_buffer;
+}
 
 
 network_message parse_network_message_stateless(std::span<const unsigned char> input_data, parsing_error& err_out, uint64_t& buffer_bytes_read) {

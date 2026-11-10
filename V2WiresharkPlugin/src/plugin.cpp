@@ -29,8 +29,9 @@ extern "C" {
 
     WS_DLL_PUBLIC void plugin_register(void);
 
+    // Here are wireshark indexes for each field
     static int packet_header_type;
-    static int packet_header_data_segment_count;;
+    static int packet_header_data_segment_count;
     static int packet_header_sequence_num;
     static int packet_header_session_handle;
 
@@ -43,11 +44,70 @@ extern "C" {
 
     static int segment_payload_data;
 
+    static int acknowledge_segment_received_reliable_sequence_number;
+    static int acknowledge_segment_received_sent_time;
+
+    static int connect_segment_outgoing_peer_id;
+    static int connect_segment_mtu;
+    static int connect_segment_window_size;
+    static int connect_segment_channel_count;
+    static int connect_segment_incoming_bandwidth;
+    static int connect_segment_outgoing_bandwidth;
+    static int connect_segment_packet_throttle_interval;
+    static int connect_segment_packet_throttle_acceleration;
+    static int connect_segment_packet_throttle_deceleration;
+
+    static int disconnect_segment_data;
+
+    static int bandwidth_limit_segment_incoming_bandwidth;
+    static int bandwidth_limit_segment_outgoing_bandwidth;
+
+    static int send_unreliable_segment_unreliable_sequence_number;
+
+    static int send_fragment_segment_start_sequence_number;
+    static int send_fragment_segment_fragment_count;
+    static int send_fragment_segment_fragment_number;
+    static int send_fragment_segment_total_length;
+    static int send_fragment_segment_fragment_offset;
+
+    static int send_unsequenced_segment_unsequenced_group;
+
+    static int throttle_configure_segment_packet_throttle_interval;
+    static int throttle_configure_segment_packet_throttle_acceleration;
+    static int throttle_configure_segment_packet_throttle_deceleration;
+
+    // Here for display arrays (subtrees)
     static int main_array = -1;
     static int header_array = -1;
     static int segment_array = -1;
     static int segment_header_array = -1;
     static int segment_payload_array = -1;
+    static int acknowledge_segment_array = -1;
+    static int connect_segment_array = -1;
+    static int connect_verify_segment_array = -1;
+    static int bandwidth_limit_segment_array = -1;
+    static int send_unreliable_segment_array = -1;
+    static int send_fragment_segment_array = -1;
+    static int send_unsequenced_segment_array = -1;
+    static int throttle_configure_segment_array = -1;
+
+
+    static void handle_segment_required_fields(uint64_t& index, std::span<const unsigned char> input_data, data_segment& segment)
+    {
+        switch (segment.segment_header.command_type)
+        {
+            case protocol_command_type::none:
+            {
+                return; // no required fields
+            }
+            case protocol_command_type::acknowledge:
+            {
+                auto segment_data = parse_network_struct<acknowledge_segment>(input_data, index);
+
+                return; // no required fields
+            }
+        }
+    }
 
 
     static int dissect_V2RUDP(tvbuff_t *packet_buffer, packet_info *packet_info, proto_tree *tree, void *data _U_)
@@ -149,6 +209,48 @@ extern "C" {
         static hf_register_info segment_payload_fields[] = {
             { &segment_payload_data, { "Payload", "V2RUDP.segment_payload", FT_BYTES, SEP_SPACE, NULL, 0x0, NULL, HFILL }},
         };
+
+        static hf_register_info acknowledge_segment_fields[] = {
+            { &acknowledge_segment_received_reliable_sequence_number, { "Received reliable sequence number", "V2RUDP.received_reliable_seq_num", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &acknowledge_segment_received_sent_time, { "Received sent time", "V2RUDP.received_sent_time", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+        };
+        static hf_register_info connect_or_verify_connect_segment_fields[] = {
+            { &connect_segment_outgoing_peer_id, { "Outgoing peer ID", "V2RUDP.outgoing_peer_id", FT_UINT16, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+            { &connect_segment_mtu, { "MTU", "V2RUDP.mtu", FT_UINT16, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &connect_segment_window_size, { "Window size", "V2RUDP.window_size", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &connect_segment_channel_count, { "Channel count", "V2RUDP.channel_count", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &connect_segment_incoming_bandwidth, { "Incoming bandwidth", "V2RUDP.incoming_bandwidth", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &connect_segment_outgoing_bandwidth, { "Outgoing bandwidth", "V2RUDP.outgoing_bandwidth", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &connect_segment_packet_throttle_interval, { "Packet throttle interval", "V2RUDP.packet_throttle_interval", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &connect_segment_packet_throttle_acceleration, { "Packet throttle acceleration", "V2RUDP.packet_throttle_acceleration", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &connect_segment_packet_throttle_deceleration, { "Packet throttle deceleration", "V2RUDP.packet_throttle_deceleration", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+        };
+        static hf_register_info disconnect_segment_fields[] = {
+            { &disconnect_segment_data, { "Data", "V2RUDP.disconnect_data", FT_UINT32, BASE_HEX, NULL, 0x0, NULL, HFILL }},
+        };
+        static hf_register_info bandwidth_limit_segment_fields[] = {
+            { &bandwidth_limit_segment_incoming_bandwidth, { "Incoming Bandwidth", "V2RUDP.incoming_bandwidth", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &bandwidth_limit_segment_outgoing_bandwidth, { "Outgoing Bandwidth", "V2RUDP.outgoing_bandwidth", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+        };
+        static hf_register_info send_unreliable_segment_fields[] = {
+            { &send_unreliable_segment_unreliable_sequence_number, { "Unreliable sequence number", "V2RUDP.unreliable_sequence_number", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+        };
+        static hf_register_info send_fragment_segment_fields[] = {
+            { &send_fragment_segment_start_sequence_number, { "Start sequence number", "V2RUDP.start_sequence_number", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &send_fragment_segment_fragment_count, { "Fragment count", "V2RUDP.fragment_count", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &send_fragment_segment_fragment_number, { "Fragment number", "V2RUDP.fragment_number", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &send_fragment_segment_total_length, { "Total length", "V2RUDP.total_length", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &send_fragment_segment_fragment_offset, { "Fragment offset", "V2RUDP.fragment_offset", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+        };
+        static hf_register_info send_unsequenced_segment_fields[] = {
+            { &send_unsequenced_segment_unsequenced_group, { "Unsequenced group", "V2RUDP.unsequenced_group", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+        };
+        static hf_register_info throttle_configure_segment_fields[] = {
+            { &throttle_configure_segment_packet_throttle_interval, { "Packet throttle interval", "V2RUDP.packet_throttle_interval", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &throttle_configure_segment_packet_throttle_acceleration, { "Packet throttle acceleration", "V2RUDP.packet_throttle_acceleration", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+            { &throttle_configure_segment_packet_throttle_deceleration, { "Packet throttle deceleration", "V2RUDP.packet_throttle_deceleration", FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL }},
+        };
+
         /* Setup protocol subtree array */
         static int *subtree_arrays[] = {
             &main_array,

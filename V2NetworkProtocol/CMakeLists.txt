@@ -3,7 +3,7 @@
 #
 cmake_minimum_required(VERSION 3.20)
 # Add source to this project's executable.
-add_library (V2NetworkProtocol STATIC "src/message_parsing.cpp" "src/message_parsing.hpp")
+add_library (V2NetworkProtocol STATIC "src/message_parsing.cpp" "src/message_parsing.hpp" "src/message_types.hpp" "src/message_enums.hpp" "src/concepts.hpp")
 
 target_include_directories(V2NetworkProtocol
         PUBLIC
