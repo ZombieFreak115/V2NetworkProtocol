@@ -27,7 +27,7 @@ int main()
         fs.seekg(0, std::ios::beg);
         std::vector<unsigned char> buffer(bytes_read);
         fs.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
-        parsing_error err;
+        message_parsing_error err;
         uint64_t processed;
         network_message msg = parse_network_message_stateless(buffer, err, processed );
         int i = 5;

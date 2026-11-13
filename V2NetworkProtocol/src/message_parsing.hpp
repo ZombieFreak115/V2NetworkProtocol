@@ -24,18 +24,152 @@ enum class parsing_state :uint8_t {
 	parsing_segment_header = 1,
 	parsing_segment_data = 2,
 };
-enum class parsing_error : uint8_t
+enum class message_parsing_error : uint8_t
 {
 	success = 0,
 	not_enough_bytes_for_packet_header = 1,
 	not_enough_bytes_for_segment_header = 2,
 	not_enough_bytes_for_segment_data = 3,
 };
+enum class struct_parsing_error : uint8_t
+{
+	success = 0,
+	not_enough_bytes_for_struct = 1,
+};
 
 template<concepts::network_struct struct_type>
-struct_type parse_network_struct(std::span<const unsigned char> input_data, uint64_t& buffer_bytes_read);
+struct_type parse_network_struct(std::span<const unsigned char> input_data, struct_parsing_error& err_out, uint64_t& buffer_bytes_read)
+{
+	struct_type out_buffer;
+	if (input_data.size() < sizeof(struct_type))
+	{
+		err_out = struct_parsing_error::not_enough_bytes_for_struct;
+		return out_buffer;
+	}
+	std::memcpy(&out_buffer, input_data.data(), sizeof(struct_type));
+	out_buffer.to_host_order();
+	buffer_bytes_read += sizeof(struct_type);
+	err_out = struct_parsing_error::success;
+	return out_buffer;
+}
 
-network_message parse_network_message_stateless(std::span<const unsigned char> input_data, parsing_error& err_out, uint64_t& buffer_bytes_read);
+template<typename Visistor>
+static struct_parsing_error visit_segment_required_fields(const data_segment& segment, uint64_t& buffer_bytes_read, Visistor&& on_segment_parsed)
+{
+	struct_parsing_error err = struct_parsing_error::success;
+	switch (segment.segment_header.command_type)
+	{
+		case protocol_command_type::none:
+		{
+			// No required fields to parse
+			on_segment_parsed(none_segment{});
+			break;
+		}
+		case protocol_command_type::acknowledge:
+		{
+			auto segment_data = parse_network_struct<acknowledge_segment>(segment.variable_data, err, buffer_bytes_read);
+			if (err == struct_parsing_error::success)
+			{
+				on_segment_parsed(segment_data);
+			}
+			break;
+		}
+		case protocol_command_type::connect:
+		{
+			auto segment_data = parse_network_struct<connect_segment>(segment.variable_data, err, buffer_bytes_read);
+			if (err == struct_parsing_error::success)
+			{
+				on_segment_parsed(segment_data);
+			}
+			break;
+		}
+		case protocol_command_type::verify_connect:
+		{
+			auto segment_data = parse_network_struct<verify_connect_segment>(segment.variable_data, err, buffer_bytes_read);
+			if (err == struct_parsing_error::success)
+			{
+				on_segment_parsed(segment_data);
+			}
+			break;
+		}
+		case protocol_command_type::disconnect:
+		{
+			auto segment_data = parse_network_struct<disconnect_segment>(segment.variable_data, err, buffer_bytes_read);
+			if (err == struct_parsing_error::success)
+			{
+				on_segment_parsed(segment_data);
+			}
+			break;
+		}
+		case protocol_command_type::ping:
+		{
+			// No required fields to parse
+			on_segment_parsed(ping_segment{});
+			break;
+		}
+		case protocol_command_type::send_reliable:
+		{
+			// No required fields to parse
+			on_segment_parsed(send_reliable_segment{});
+			break;
+		}
+		case protocol_command_type::send_unreliable:
+		{
+			auto segment_data = parse_network_struct<send_unreliable_segment>(segment.variable_data, err, buffer_bytes_read);
+			if (err == struct_parsing_error::success)
+			{
+				on_segment_parsed(segment_data);
+			}
+			break;
+		}
+		case protocol_command_type::send_fragment:
+		{
+			auto segment_data = parse_network_struct<send_fragment_segment>(segment.variable_data, err, buffer_bytes_read);
+			if (err == struct_parsing_error::success)
+			{
+				on_segment_parsed(segment_data);
+			}
+			break;
+		}
+		case protocol_command_type::bandwidth_limit:
+		{
+			auto segment_data = parse_network_struct<bandwidth_limit_segment>(segment.variable_data, err, buffer_bytes_read);
+			if (err == struct_parsing_error::success)
+			{
+				on_segment_parsed(segment_data);
+			}
+			break;
+		}
+		case protocol_command_type::throttle_configure:
+		{
+			auto segment_data = parse_network_struct<throttle_configure_segment>(segment.variable_data, err, buffer_bytes_read);
+			if (err == struct_parsing_error::success)
+			{
+				on_segment_parsed(segment_data);
+			}
+			break;
+		}
+		case protocol_command_type::send_unsequenced:
+		{
+			auto segment_data = parse_network_struct<send_unsequenced_segment>(segment.variable_data, err, buffer_bytes_read);
+			if (err == struct_parsing_error::success)
+			{
+				on_segment_parsed(segment_data);
+			}
+			break;
+		}
+		default:
+		{
+			break;
+		}
+	}
+	return err;
+}
+
+
+
+
+network_message parse_network_message_stateless(std::span<const unsigned char> input_data, message_parsing_error& err_out, uint64_t& buffer_bytes_read);
 
 template<typename F>
 void parse_network_message_statefull(std::span<unsigned char> input_data, F&& on_message_parsed) {

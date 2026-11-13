@@ -1,20 +1,7 @@
 #include "message_parsing.hpp"
-#include "concepts.hpp"
 
 
-template<concepts::network_struct struct_type>
-struct_type parse_network_struct(std::span<const unsigned char> input_data, uint64_t& buffer_bytes_read)
-{
-	struct_type out_buffer{};
-	uint64_t to_read = std::min(input_data.size(), sizeof(struct_type));
-	std::memcpy(out_buffer, input_data.data(), to_read);
-	out_buffer.to_host_order();
-	buffer_bytes_read += to_read;
-	return out_buffer;
-}
-
-
-network_message parse_network_message_stateless(std::span<const unsigned char> input_data, parsing_error& err_out, uint64_t& buffer_bytes_read) {
+network_message parse_network_message_stateless(std::span<const unsigned char> input_data, message_parsing_error& err_out, uint64_t& buffer_bytes_read) {
 	uint64_t buffer_size = input_data.size();
 	parsing_state parse_state = parsing_state::parsing_packet_header;
 	uint16_t segments_to_parse = 0;
@@ -34,7 +21,7 @@ network_message parse_network_message_stateless(std::span<const unsigned char> i
 				uint64_t header_size = sizeof(out_buffer.header);
 				if (buffer_size < header_size)
 				{
-					err_out = parsing_error::not_enough_bytes_for_packet_header;
+					err_out = message_parsing_error::not_enough_bytes_for_packet_header;
 					return out_buffer;
 				}
 				std::memcpy(binary_header, input_data.data(), header_size);
@@ -49,7 +36,7 @@ network_message parse_network_message_stateless(std::span<const unsigned char> i
 				}
 				else {
 					// If there are no data segments, then we are done
-					err_out = parsing_error::success;
+					err_out = message_parsing_error::success;
 					return out_buffer;
 				}
 			}
@@ -57,7 +44,7 @@ network_message parse_network_message_stateless(std::span<const unsigned char> i
 		{
 			if (current_segment_index >= segments_to_parse)
 			{
-				err_out = parsing_error::not_enough_bytes_for_segment_header;
+				err_out = message_parsing_error::not_enough_bytes_for_segment_header;
 				return out_buffer;
 			}
 			auto& current_data_segment = out_buffer.data_segments[current_segment_index];
@@ -65,7 +52,7 @@ network_message parse_network_message_stateless(std::span<const unsigned char> i
 			uint64_t segment_header_size = sizeof(current_data_segment.segment_header);
 			if (buffer_size - buffer_bytes_read < segment_header_size)
 			{
-				err_out = parsing_error::not_enough_bytes_for_segment_header;
+				err_out = message_parsing_error::not_enough_bytes_for_segment_header;
 				return out_buffer;
 			}
 			std::memcpy(binary_segment_header, input_data.data() + buffer_bytes_read, segment_header_size);
@@ -80,13 +67,13 @@ network_message parse_network_message_stateless(std::span<const unsigned char> i
 		{
 			if (current_segment_index >= segments_to_parse)
 			{
-				err_out = parsing_error::not_enough_bytes_for_segment_data;
+				err_out = message_parsing_error::not_enough_bytes_for_segment_data;
 				return out_buffer;
 			}
 			auto& current_data_segment = out_buffer.data_segments[current_segment_index];
 			if (buffer_size - buffer_bytes_read < current_segment_size)
 			{
-				err_out = parsing_error::not_enough_bytes_for_segment_data;
+				err_out = message_parsing_error::not_enough_bytes_for_segment_data;
 				return out_buffer;
 			}
 			std::memcpy(current_data_segment.variable_data.data(), input_data.data() + buffer_bytes_read, current_segment_size);
@@ -96,7 +83,7 @@ network_message parse_network_message_stateless(std::span<const unsigned char> i
 			current_segment_size = 0;
 			if (current_segment_index == segments_to_parse) {
 				// We are done with this message
-				err_out = parsing_error::success;
+				err_out = message_parsing_error::success;
 				return out_buffer;
 			}
 			// Begin to parse the next segment header as there are still segments left to parse
